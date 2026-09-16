@@ -1,0 +1,755 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Traço</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d3a5c;
+    --bg-panel:#0a2f4a;
+    --bg-raised:#123f61;
+    --bg-raised-2:#16496f;
+    --ink:#eef6ff;
+    --ink-dim:#8fb4d1;
+    --ink-faint:#5f8caf;
+    --accent:#f5a623;
+    --accent-ink:#2a1800;
+    --ghost:#57d1e0;
+    --danger:#ff7a7a;
+    --border:rgba(238,246,255,0.16);
+    --border-strong:rgba(238,246,255,0.32);
+    --font-display:'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --font-body:'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', 'Courier New', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;text-wrap:balance;}
+  button, input, select{font-family:inherit;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important;animation:none!important;}
+  }
+
+  /* ---------- layout ---------- */
+  .app{
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-areas:"header" "canvas" "panel";
+    min-height:100%;
+    padding-inline:16px;
+    padding-block:16px;
+    gap:16px;
+    max-width:1400px;
+    margin-inline:auto;
+  }
+  @media (min-width:860px){
+    .app{
+      grid-template-columns:360px 1fr;
+      grid-template-areas:"header header" "panel canvas";
+      padding-inline:28px;
+      padding-block:24px;
+      gap:20px;
+    }
+  }
+
+  header.masthead{grid-area:header;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:14px;}
+  .masthead-title{display:flex;align-items:center;gap:14px;}
+  .masthead h1{font-size:clamp(2.1rem,4vw,2.8rem);letter-spacing:.02em;color:var(--ink);}
+  .masthead .tagline{color:var(--ink-dim);font-size:.92rem;max-width:46ch;}
+  .id-matrix{opacity:.85;flex-shrink:0;}
+
+  /* ---------- panel (instrument tray) ---------- */
+  .panel{grid-area:panel;display:flex;flex-direction:column;gap:14px;min-width:0;}
+  .block{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:14px 16px 16px;
+  }
+  .block-label{
+    font-family:var(--font-mono);
+    font-size:.7rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .block-label::before{content:"";width:8px;height:8px;border:1px solid var(--ink-faint);flex-shrink:0;}
+
+  .field-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  label{font-size:.82rem;color:var(--ink-dim);}
+  input[type=number], select{
+    background:var(--bg-raised);
+    border:1px solid var(--border);
+    color:var(--ink);
+    border-radius:3px;
+    padding:7px 8px;
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    width:5.5em;
+  }
+  input[type=number]:focus-visible, select:focus-visible, button:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  select{width:auto;}
+
+  button{
+    border-radius:3px;
+    border:1px solid var(--border-strong);
+    background:transparent;
+    color:var(--ink);
+    padding:8px 14px;
+    font-size:.82rem;
+    font-weight:600;
+    letter-spacing:.03em;
+    cursor:pointer;
+  }
+  button:hover{background:var(--bg-raised-2);}
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-ink);
+  }
+  button.primary:hover{background:#ffb84a;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button:disabled:hover{background:transparent;}
+  button.small{padding:5px 9px;font-size:.74rem;}
+  button.ghost-danger{border-color:var(--danger);color:var(--danger);}
+  button.ghost-danger:hover{background:rgba(255,122,122,0.12);}
+
+  .points-table{width:100%;border-collapse:collapse;margin-top:10px;font-family:var(--font-mono);font-size:.85rem;}
+  .points-table th{text-align:left;color:var(--ink-faint);font-weight:500;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding-bottom:6px;}
+  .points-table td{padding:3px 6px 3px 0;}
+  .points-table input{width:100%;}
+  .hint{font-size:.76rem;color:var(--ink-faint);margin-top:8px;line-height:1.4;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .tab{
+    flex:1 1 auto;
+    text-align:center;
+    background:var(--bg-raised);
+    border:1px solid var(--border);
+  }
+  .tab[aria-selected=true]{background:var(--bg-raised-2);border-color:var(--border-strong);color:var(--accent);}
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+  .tabpanel .field-row{margin-bottom:10px;}
+  .reflect-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .queue-list{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .queue-item, .history-item{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--bg-raised);border:1px solid var(--border);border-radius:3px;
+    padding:6px 8px;font-size:.8rem;
+  }
+  .queue-item .item-label, .history-item .item-label{display:flex;align-items:center;gap:8px;min-width:0;}
+  .queue-item .item-text, .history-item .item-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .empty-note{color:var(--ink-faint);font-size:.78rem;font-style:italic;}
+
+  .history-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column-reverse;gap:6px;max-height:220px;overflow-y:auto;}
+
+  .status-msg{margin-top:10px;font-size:.8rem;padding:8px 10px;border-radius:3px;border:1px solid var(--danger);color:var(--danger);background:rgba(255,122,122,0.08);}
+  .status-msg[hidden]{display:none;}
+
+  /* matrix bracket notation */
+  .matrix{display:inline-flex;align-items:stretch;font-family:var(--font-mono);font-size:.82rem;flex-shrink:0;}
+  .matrix .bracket{width:5px;border-top:2px solid currentColor;border-bottom:2px solid currentColor;}
+  .matrix .bracket.left{border-left:2px solid currentColor;margin-right:3px;}
+  .matrix .bracket.right{border-right:2px solid currentColor;margin-left:3px;}
+  .matrix .grid{display:grid;grid-template-columns:repeat(2,minmax(2.4em,auto));gap:1px 8px;align-items:center;justify-items:end;padding:2px 0;font-variant-numeric:tabular-nums;}
+  .matrix.tiny{font-size:.72rem;}
+  .matrix.tiny .grid{grid-template-columns:repeat(2,minmax(1.8em,auto));}
+
+  /* ---------- canvas column ---------- */
+  .canvas-col{grid-area:canvas;display:flex;flex-direction:column;gap:12px;min-width:0;}
+  .readout{
+    background:var(--bg-panel);border:1px solid var(--border);border-radius:4px;
+    padding:12px 16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:space-between;
+  }
+  .readout-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .readout-title{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .det-tag{font-family:var(--font-mono);font-size:.78rem;color:var(--ink-dim);}
+  .det-tag.singular{color:var(--danger);}
+
+  .canvas-wrap{
+    position:relative;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+    flex:1 1 auto;
+    min-height:420px;
+    overflow:hidden;
+  }
+  canvas{display:block;width:100%;height:100%;}
+  .legend{
+    position:absolute;bottom:10px;left:12px;display:flex;gap:16px;flex-wrap:wrap;
+    font-size:.72rem;color:var(--ink-dim);background:rgba(10,47,74,0.72);padding:6px 10px;border-radius:3px;
+    border:1px solid var(--border);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend .swatch{width:16px;height:2px;display:inline-block;}
+  .legend .swatch.ghost{background:var(--ghost);border-top:2px dashed var(--ghost);height:0;}
+  .legend .swatch.current{background:var(--accent);}
+
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--bg-raised-2);border-radius:5px;}
+</style>
+
+<div class="app">
+
+  <header class="masthead">
+    <div class="masthead-title">
+      <h1>Traço</h1>
+      <svg class="id-matrix" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <path d="M6 3 L2 3 L2 31 L6 31 M28 3 L32 3 L32 31 L28 31" fill="none" stroke="#f5a623" stroke-width="2"/>
+        <text x="10" y="15" fill="#eef6ff" font-family="IBM Plex Mono" font-size="10">1 0</text>
+        <text x="10" y="27" fill="#eef6ff" font-family="IBM Plex Mono" font-size="10">0 1</text>
+      </svg>
+    </div>
+    <p class="tagline">Editor vetorial 2D — defina os vértices de uma figura e aplique rotação, escala, reflexão, composições e reversões por matriz inversa. Tudo roda no navegador, sem servidor nem banco de dados.</p>
+  </header>
+
+  <section class="panel">
+
+    <div class="block">
+      <p class="block-label">1 · Vértices</p>
+      <div class="field-row">
+        <label for="pointCount">Quantidade (mín. 3)</label>
+        <input type="number" id="pointCount" min="3" step="1" value="5">
+        <button id="btnGenerate">Gerar campos</button>
+      </div>
+      <table class="points-table" id="pointsTable"></table>
+      <p class="hint">Exemplo pré-carregado: um pentágono em forma de casa. Edite os valores e clique em "Traçar figura".</p>
+      <div class="field-row" style="margin-top:10px;">
+        <button id="btnPlot" class="primary">Traçar figura</button>
+        <button id="btnReset">Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <p class="block-label">2 · Transformação única</p>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-tab="rot">Rotação</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="esc">Escala</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="ref">Reflexão</button>
+      </div>
+
+      <div class="tabpanel active" data-panel="rot">
+        <div class="field-row">
+          <label for="rotAngle">Ângulo (°)</label>
+          <input type="number" id="rotAngle" value="45" step="1">
+        </div>
+        <button id="btnApplyRot" class="primary">Aplicar rotação</button>
+      </div>
+
+      <div class="tabpanel" data-panel="esc">
+        <div class="field-row">
+          <label for="scaleSx">Sx</label>
+          <input type="number" id="scaleSx" value="1.5" step="0.1">
+          <label for="scaleSy">Sy</label>
+          <input type="number" id="scaleSy" value="1.5" step="0.1">
+        </div>
+        <button id="btnApplyScale" class="primary">Aplicar escala</button>
+      </div>
+
+      <div class="tabpanel" data-panel="ref">
+        <p class="hint" style="margin:0 0 8px;">Escolha o eixo de reflexão — aplica na hora.</p>
+        <div class="reflect-buttons">
+          <button data-axis="x" class="btnReflect">Eixo X</button>
+          <button data-axis="y" class="btnReflect">Eixo Y</button>
+          <button data-axis="origin" class="btnReflect">Origem</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <p class="block-label">3 · Transformações múltiplas</p>
+      <p class="hint" style="margin-top:0;">Enfileire transformações; a matriz composta (produto das matrizes) é aplicada de uma só vez sobre a figura atual.</p>
+      <div class="field-row" style="margin-bottom:8px;">
+        <label for="qRotAngle">Rotação (°)</label>
+        <input type="number" id="qRotAngle" value="30" step="1">
+        <button id="btnQueueRot" class="small">+ adicionar</button>
+      </div>
+      <div class="field-row" style="margin-bottom:8px;">
+        <label for="qSx">Escala Sx</label>
+        <input type="number" id="qSx" value="1.2" step="0.1">
+        <label for="qSy">Sy</label>
+        <input type="number" id="qSy" value="1.2" step="0.1">
+        <button id="btnQueueScale" class="small">+ adicionar</button>
+      </div>
+      <div class="field-row">
+        <label for="qAxis">Reflexão</label>
+        <select id="qAxis">
+          <option value="x">Eixo X</option>
+          <option value="y">Eixo Y</option>
+          <option value="origin">Origem</option>
+        </select>
+        <button id="btnQueueReflect" class="small">+ adicionar</button>
+      </div>
+      <ul class="queue-list" id="queueList"></ul>
+      <button id="btnApplyQueue" class="primary" disabled>Aplicar composição</button>
+    </div>
+
+    <div class="block">
+      <p class="block-label">4 · Reversão (matriz inversa)</p>
+      <p class="hint" style="margin-top:0;">Cada transformação aplicada entra nesta pilha. Reverter multiplica a figura pela inversa da matriz do topo.</p>
+      <ul class="history-list" id="historyList"></ul>
+      <div class="field-row" style="margin-top:10px;">
+        <button id="btnRevert" class="ghost-danger" disabled>Reverter última transformação</button>
+      </div>
+      <p class="status-msg" id="revertError" hidden></p>
+    </div>
+
+  </section>
+
+  <section class="canvas-col">
+    <div class="readout">
+      <div class="readout-left">
+        <span class="readout-title">Matriz atual</span>
+        <div id="currentMatrix"></div>
+      </div>
+      <span class="det-tag" id="detTag"></span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="plot"></canvas>
+      <div class="legend">
+        <span><span class="swatch ghost"></span> figura original</span>
+        <span><span class="swatch current"></span> figura atual</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- matrix helpers ----------
+  function matMul(A, B){
+    return [
+      [A[0][0]*B[0][0]+A[0][1]*B[1][0], A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+      [A[1][0]*B[0][0]+A[1][1]*B[1][0], A[1][0]*B[0][1]+A[1][1]*B[1][1]],
+    ];
+  }
+  function matVec(A, p){
+    return { x: A[0][0]*p.x + A[0][1]*p.y, y: A[1][0]*p.x + A[1][1]*p.y };
+  }
+  function applyMatrix(A, points){ return points.map(function(p){ return matVec(A, p); }); }
+  function det2(A){ return A[0][0]*A[1][1] - A[0][1]*A[1][0]; }
+  function inverse2(A){
+    var d = det2(A);
+    if (Math.abs(d) < 1e-9) return null;
+    return [
+      [ A[1][1]/d, -A[0][1]/d],
+      [-A[1][0]/d,  A[0][0]/d],
+    ];
+  }
+  function rotationMatrix(deg){
+    var t = deg * Math.PI / 180;
+    return [[Math.cos(t), -Math.sin(t)], [Math.sin(t), Math.cos(t)]];
+  }
+  function scaleMatrix(sx, sy){ return [[sx,0],[0,sy]]; }
+  function reflectionMatrix(axis){
+    if (axis === "x") return [[1,0],[0,-1]];
+    if (axis === "y") return [[-1,0],[0,1]];
+    return [[-1,0],[0,-1]];
+  }
+  function identity(){ return [[1,0],[0,1]]; }
+
+  function fmt(n){
+    if (Math.abs(n) < 1e-9) n = 0;
+    return n.toFixed(2);
+  }
+  function matrixHTML(A, tiny){
+    var cells = [A[0][0],A[0][1],A[1][0],A[1][1]].map(fmt);
+    return (
+      '<div class="matrix'+(tiny?' tiny':'')+'">' +
+        '<span class="bracket left"></span>' +
+        '<div class="grid">' + cells.map(function(c){ return '<span>'+c+'</span>'; }).join('') + '</div>' +
+        '<span class="bracket right"></span>' +
+      '</div>'
+    );
+  }
+
+  // ---------- state ----------
+  var state = {
+    originalPoints: [],
+    currentPoints: [],
+    history: [],   // [{label, matrix}]
+    queue: []      // [{label, matrix}]
+  };
+
+  var DEFAULT_POINTS = [
+    {x:0, y:0}, {x:4, y:0}, {x:4, y:3}, {x:2, y:5}, {x:0, y:3}
+  ];
+
+  // ---------- DOM refs ----------
+  var pointCountInput = document.getElementById('pointCount');
+  var pointsTable = document.getElementById('pointsTable');
+  var btnGenerate = document.getElementById('btnGenerate');
+  var btnPlot = document.getElementById('btnPlot');
+  var btnReset = document.getElementById('btnReset');
+
+  var tabs = document.querySelectorAll('.tab');
+  var tabpanels = document.querySelectorAll('.tabpanel');
+
+  var rotAngle = document.getElementById('rotAngle');
+  var scaleSx = document.getElementById('scaleSx');
+  var scaleSy = document.getElementById('scaleSy');
+  var btnApplyRot = document.getElementById('btnApplyRot');
+  var btnApplyScale = document.getElementById('btnApplyScale');
+  var reflectButtons = document.querySelectorAll('.btnReflect');
+
+  var qRotAngle = document.getElementById('qRotAngle');
+  var qSx = document.getElementById('qSx');
+  var qSy = document.getElementById('qSy');
+  var qAxis = document.getElementById('qAxis');
+  var btnQueueRot = document.getElementById('btnQueueRot');
+  var btnQueueScale = document.getElementById('btnQueueScale');
+  var btnQueueReflect = document.getElementById('btnQueueReflect');
+  var queueList = document.getElementById('queueList');
+  var btnApplyQueue = document.getElementById('btnApplyQueue');
+
+  var historyList = document.getElementById('historyList');
+  var btnRevert = document.getElementById('btnRevert');
+  var revertError = document.getElementById('revertError');
+
+  var currentMatrixEl = document.getElementById('currentMatrix');
+  var detTag = document.getElementById('detTag');
+  var canvas = document.getElementById('plot');
+  var ctx = canvas.getContext('2d');
+  var canvasWrap = document.querySelector('.canvas-wrap');
+
+  // ---------- points table ----------
+  function buildPointsTable(n, seedPoints){
+    var rows = ['<tr><th></th><th>X</th><th>Y</th></tr>'];
+    for (var i = 0; i < n; i++){
+      var seed = (seedPoints && seedPoints[i]) || {x:0,y:0};
+      rows.push(
+        '<tr><td style="color:var(--ink-faint);">P'+(i+1)+'</td>' +
+        '<td><input type="number" step="0.5" id="px-'+i+'" value="'+seed.x+'"></td>' +
+        '<td><input type="number" step="0.5" id="py-'+i+'" value="'+seed.y+'"></td></tr>'
+      );
+    }
+    pointsTable.innerHTML = rows.join('');
+  }
+
+  function readPointsFromTable(n){
+    var pts = [];
+    for (var i = 0; i < n; i++){
+      var x = parseFloat(document.getElementById('px-'+i).value);
+      var y = parseFloat(document.getElementById('py-'+i).value);
+      pts.push({ x: isNaN(x) ? 0 : x, y: isNaN(y) ? 0 : y });
+    }
+    return pts;
+  }
+
+  btnGenerate.addEventListener('click', function(){
+    var n = parseInt(pointCountInput.value, 10);
+    if (isNaN(n) || n < 3){
+      pointCountInput.value = 3;
+      n = 3;
+    }
+    buildPointsTable(n, null);
+  });
+
+  btnPlot.addEventListener('click', function(){
+    var n = parseInt(pointCountInput.value, 10);
+    if (isNaN(n) || n < 3) { n = 3; pointCountInput.value = 3; }
+    var pts = readPointsFromTable(n);
+    state.originalPoints = pts.map(function(p){ return {x:p.x, y:p.y}; });
+    state.currentPoints = pts.map(function(p){ return {x:p.x, y:p.y}; });
+    state.history = [];
+    state.queue = [];
+    renderQueue();
+    renderHistory();
+    setCurrentMatrixDisplay(identity());
+    hideRevertError();
+    draw();
+  });
+
+  btnReset.addEventListener('click', function(){
+    if (!state.originalPoints.length) return;
+    state.currentPoints = state.originalPoints.map(function(p){ return {x:p.x, y:p.y}; });
+    state.history = [];
+    state.queue = [];
+    renderQueue();
+    renderHistory();
+    setCurrentMatrixDisplay(identity());
+    hideRevertError();
+    draw();
+  });
+
+  // ---------- tabs ----------
+  tabs.forEach(function(tab){
+    tab.addEventListener('click', function(){
+      tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+      tabpanels.forEach(function(p){ p.classList.remove('active'); });
+      tab.setAttribute('aria-selected','true');
+      document.querySelector('.tabpanel[data-panel="'+tab.dataset.tab+'"]').classList.add('active');
+    });
+  });
+
+  // ---------- single transform ----------
+  function applySingle(matrix, label){
+    if (!state.currentPoints.length) return;
+    state.currentPoints = applyMatrix(matrix, state.currentPoints);
+    state.history.push({ label: label, matrix: matrix });
+    renderHistory();
+    setCurrentMatrixDisplay(matrix);
+    hideRevertError();
+    draw();
+  }
+
+  btnApplyRot.addEventListener('click', function(){
+    var deg = parseFloat(rotAngle.value) || 0;
+    applySingle(rotationMatrix(deg), 'Rotação ' + deg + '°');
+  });
+  btnApplyScale.addEventListener('click', function(){
+    var sx = parseFloat(scaleSx.value); if (isNaN(sx)) sx = 1;
+    var sy = parseFloat(scaleSy.value); if (isNaN(sy)) sy = 1;
+    applySingle(scaleMatrix(sx, sy), 'Escala (' + sx + ', ' + sy + ')');
+  });
+  reflectButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var axis = btn.dataset.axis;
+      var label = axis === 'x' ? 'Reflexão eixo X' : axis === 'y' ? 'Reflexão eixo Y' : 'Reflexão na origem';
+      applySingle(reflectionMatrix(axis), label);
+    });
+  });
+
+  // ---------- queue / composition ----------
+  function renderQueue(){
+    if (!state.queue.length){
+      queueList.innerHTML = '<li class="empty-note">Fila vazia — adicione transformações acima.</li>';
+      btnApplyQueue.disabled = true;
+      return;
+    }
+    btnApplyQueue.disabled = false;
+    queueList.innerHTML = state.queue.map(function(item, idx){
+      return (
+        '<li class="queue-item">' +
+          '<span class="item-label"><span class="item-text">'+(idx+1)+'. '+item.label+'</span></span>' +
+          '<button class="small btnRemoveQueue" data-idx="'+idx+'">×</button>' +
+        '</li>'
+      );
+    }).join('');
+    queueList.querySelectorAll('.btnRemoveQueue').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.queue.splice(parseInt(btn.dataset.idx,10), 1);
+        renderQueue();
+      });
+    });
+  }
+
+  btnQueueRot.addEventListener('click', function(){
+    var deg = parseFloat(qRotAngle.value) || 0;
+    state.queue.push({ label: 'Rotação ' + deg + '°', matrix: rotationMatrix(deg) });
+    renderQueue();
+  });
+  btnQueueScale.addEventListener('click', function(){
+    var sx = parseFloat(qSx.value); if (isNaN(sx)) sx = 1;
+    var sy = parseFloat(qSy.value); if (isNaN(sy)) sy = 1;
+    state.queue.push({ label: 'Escala (' + sx + ', ' + sy + ')', matrix: scaleMatrix(sx, sy) });
+    renderQueue();
+  });
+  btnQueueReflect.addEventListener('click', function(){
+    var axis = qAxis.value;
+    var label = axis === 'x' ? 'Reflexão eixo X' : axis === 'y' ? 'Reflexão eixo Y' : 'Reflexão na origem';
+    state.queue.push({ label: label, matrix: reflectionMatrix(axis) });
+    renderQueue();
+  });
+
+  btnApplyQueue.addEventListener('click', function(){
+    if (!state.queue.length || !state.currentPoints.length) return;
+    var composite = identity();
+    state.queue.forEach(function(item){ composite = matMul(item.matrix, composite); });
+    state.currentPoints = applyMatrix(composite, state.currentPoints);
+    var label = 'Composição (' + state.queue.map(function(q){return q.label;}).join(' → ') + ')';
+    state.history.push({ label: label, matrix: composite });
+    state.queue = [];
+    renderQueue();
+    renderHistory();
+    setCurrentMatrixDisplay(composite);
+    hideRevertError();
+    draw();
+  });
+
+  // ---------- history / revert ----------
+  function renderHistory(){
+    btnRevert.disabled = state.history.length === 0;
+    if (!state.history.length){
+      historyList.innerHTML = '<li class="empty-note">Nenhuma transformação aplicada ainda.</li>';
+      return;
+    }
+    historyList.innerHTML = state.history.map(function(item){
+      return (
+        '<li class="history-item">' +
+          '<span class="item-label"><span class="item-text">'+item.label+'</span></span>' +
+          matrixHTML(item.matrix, true) +
+        '</li>'
+      );
+    }).join('');
+  }
+
+  function hideRevertError(){ revertError.hidden = true; revertError.textContent = ''; }
+
+  btnRevert.addEventListener('click', function(){
+    if (!state.history.length) return;
+    var last = state.history[state.history.length - 1];
+    var inv = inverse2(last.matrix);
+    if (!inv){
+      revertError.hidden = false;
+      revertError.textContent = '⚠ "'+last.label+'" tem matriz singular (det ≈ 0) — não possui inversa, não é possível reverter.';
+      return;
+    }
+    state.currentPoints = applyMatrix(inv, state.currentPoints);
+    state.history.pop();
+    renderHistory();
+    hideRevertError();
+    setCurrentMatrixDisplay(state.history.length ? state.history[state.history.length-1].matrix : identity());
+    draw();
+  });
+
+  // ---------- matrix readout ----------
+  function setCurrentMatrixDisplay(matrix){
+    currentMatrixEl.innerHTML = matrixHTML(matrix, false);
+    var d = det2(matrix);
+    var singular = Math.abs(d) < 1e-9;
+    detTag.textContent = 'det = ' + fmt(d) + (singular ? '  (sem inversa)' : '');
+    detTag.classList.toggle('singular', singular);
+  }
+
+  // ---------- drawing ----------
+  function niceStep(rawStep){
+    var pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    var frac = rawStep / pow;
+    var niceFrac = frac < 1.5 ? 1 : frac < 3 ? 2 : frac < 7 ? 5 : 10;
+    return niceFrac * pow;
+  }
+
+  function draw(){
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var allPts = state.originalPoints.concat(state.currentPoints);
+    if (!allPts.length){
+      ctx.fillStyle = 'rgba(238,246,255,0.35)';
+      ctx.font = '14px ' + getComputedStyle(document.body).getPropertyValue('--font-body');
+      ctx.fillText('Gere e trace uma figura para começar.', 20, 30);
+      return;
+    }
+
+    var xs = allPts.map(function(p){return p.x;});
+    var ys = allPts.map(function(p){return p.y;});
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    var padX = Math.max((maxX - minX) * 0.25, 2);
+    var padY = Math.max((maxY - minY) * 0.25, 2);
+    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+
+    var scale = Math.min(w / (maxX - minX), h / (maxY - minY));
+    var originX = w/2 - ((minX+maxX)/2) * scale;
+    var originY = h/2 + ((minY+maxY)/2) * scale;
+
+    function toScreen(p){ return { x: originX + p.x*scale, y: originY - p.y*scale }; }
+
+    var step = niceStep((maxX - minX) / 9);
+
+    // grid
+    ctx.strokeStyle = 'rgba(238,246,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.font = '10px ' + "'IBM Plex Mono', monospace";
+    ctx.fillStyle = 'rgba(143,180,209,0.85)';
+
+    var startX = Math.floor(minX/step)*step;
+    for (var gx = startX; gx <= maxX; gx += step){
+      var sx = toScreen({x:gx,y:0}).x;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+      if (Math.abs(gx) > step*0.01) ctx.fillText(fmt1(gx), sx+3, originY+12 > h-4 ? h-16 : originY+12);
+    }
+    var startY = Math.floor(minY/step)*step;
+    for (var gy = startY; gy <= maxY; gy += step){
+      var sy2 = toScreen({x:0,y:gy}).y;
+      ctx.beginPath(); ctx.moveTo(0, sy2); ctx.lineTo(w, sy2); ctx.stroke();
+      if (Math.abs(gy) > step*0.01) ctx.fillText(fmt1(gy), originX+4 > w-24 ? w-24 : originX+4, sy2-3);
+    }
+
+    // axes
+    ctx.strokeStyle = 'rgba(238,246,255,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(w, originY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, h); ctx.stroke();
+
+    function fmt1(v){
+      var r = Math.round(v*100)/100;
+      return (Math.abs(r) < 1e-9 ? 0 : r).toString();
+    }
+
+    function drawPolygon(points, strokeStyle, fillStyle, dashed, showLabels){
+      if (points.length < 2) return;
+      var screenPts = points.map(toScreen);
+      ctx.save();
+      if (dashed) ctx.setLineDash([6,5]);
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(screenPts[0].x, screenPts[0].y);
+      for (var i=1;i<screenPts.length;i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+      ctx.closePath();
+      if (fillStyle){ ctx.fillStyle = fillStyle; ctx.fill(); }
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.setLineDash([]);
+      screenPts.forEach(function(sp, i){
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 3.5, 0, Math.PI*2);
+        ctx.fillStyle = strokeStyle;
+        ctx.fill();
+        if (showLabels){
+          ctx.fillStyle = 'rgba(238,246,255,0.9)';
+          ctx.font = '11px ' + "'IBM Plex Mono', monospace";
+          ctx.fillText('P'+(i+1), sp.x+6, sp.y-6);
+        }
+      });
+    }
+
+    if (state.originalPoints.length){
+      drawPolygon(state.originalPoints, 'rgba(87,209,224,0.85)', null, true, false);
+    }
+    if (state.currentPoints.length){
+      drawPolygon(state.currentPoints, '#f5a623', 'rgba(245,166,35,0.14)', false, true);
+    }
+  }
+
+  var resizeObserver = new ResizeObserver(function(){ draw(); });
+  resizeObserver.observe(canvasWrap);
+
+  // ---------- boot with realistic sample ----------
+  pointCountInput.value = DEFAULT_POINTS.length;
+  buildPointsTable(DEFAULT_POINTS.length, DEFAULT_POINTS);
+  btnPlot.click();
+})();
+</script>
