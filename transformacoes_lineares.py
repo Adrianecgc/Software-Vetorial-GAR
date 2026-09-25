@@ -1,5 +1,6 @@
 """
 Trabalho de Algebra Linear - Transformacoes Geometricas 2D via Matrizes
+(versao corrigida com ponto de ancoragem)
 """
 
 import numpy as np
@@ -57,15 +58,78 @@ def pedir_pontos(quantidade):
 
 
 # ---------------------------------------------------------------------------
+# 2b. Ponto de ancoragem (pivo das transformacoes)
+# ---------------------------------------------------------------------------
+def pedir_ponto_ancoragem():
+    """
+    Pede o ponto de ancoragem C, que serve como pivo (centro) das
+    transformacoes. Toda transformacao linear pura (rotacao, escala,
+    reflexao) e definida em relacao a origem (0,0); se a figura nao
+    estiver na origem, e preciso:
+
+        1) trazer a figura pra origem:      P - C
+        2) aplicar a transformacao:         T @ (P - C)
+        3) devolver a figura pro lugar:     T @ (P - C) + C
+
+    Se o usuario nao quiser um pivo especifico, pode digitar 0 e 0,
+    o que equivale a transformar em relacao a propria origem.
+    """
+    print("\nPonto de ancoragem (pivo das transformacoes).")
+    print("Se quiser usar a origem (0,0), digite 0 para X e 0 para Y.")
+    while True:
+        try:
+            cx = float(input("Ancoragem - coordenada X: "))
+            cy = float(input("Ancoragem - coordenada Y: "))
+            break
+        except ValueError:
+            print("Coordenada invalida. Digite um numero (ex: 4 ou -1.5).")
+
+    # vetor coluna 2x1, para poder somar/subtrair de uma matriz 2xN via broadcast
+    return np.array([[cx], [cy]])
+
+
+# ---------------------------------------------------------------------------
 # 3. Exibicao da figura
 # ---------------------------------------------------------------------------
-def mostrar_figura(pontos, titulo="Figura"):
-    """Desenha a figura 2D a partir de uma matriz de pontos (2xN)."""
+def formatar_pontos(pontos, rotulos=None):
+    """
+    Devolve uma string legivel com as coordenadas de cada ponto,
+    arredondando ruido de ponto flutuante (ex: 1e-16 vira 0).
+    """
+    pontos_limpos = np.round(pontos, decimals=6)
+    pontos_limpos[np.isclose(pontos_limpos, 0)] = 0  # tira o -0.0 tambem
+
+    n = pontos.shape[1]
+    if rotulos is None:
+        rotulos = [f"P{i+1}" for i in range(n)]
+
+    linhas = []
+    for i in range(n):
+        x, y = pontos_limpos[0][i], pontos_limpos[1][i]
+        linhas.append(f"  {rotulos[i]}: ({x:g}, {y:g})")
+    return "\n".join(linhas)
+
+
+def mostrar_figura(pontos, titulo="Figura", ancoragem=None, arquivo_saida="figura_atual.png"):
+    """
+    Desenha a figura 2D a partir de uma matriz de pontos (2xN).
+
+    Tenta abrir a figura numa janela (plt.show). Alem disso, SEMPRE salva
+    a figura em um arquivo PNG (arquivo_saida) -- isso garante que voce
+    consiga ver o resultado mesmo se o ambiente onde o script esta
+    rodando (ex: terminal integrado de algumas IDEs, como o Antigravity)
+    nao tiver suporte a abrir uma janela grafica.
+    """
     xs = list(pontos[0]) + [pontos[0][0]]  # fecha o poligono
     ys = list(pontos[1]) + [pontos[1][0]]
 
     fig, ax = plt.subplots()
     ax.plot(xs, ys, marker="o", linestyle="-")
+
+    if ancoragem is not None:
+        ax.plot(ancoragem[0][0], ancoragem[1][0], marker="x", markersize=10,
+                color="red", label="Ancoragem")
+        ax.legend()
 
     ax.axhline(0, color="black", linewidth=0.8)
     ax.axvline(0, color="black", linewidth=0.8)
@@ -73,7 +137,14 @@ def mostrar_figura(pontos, titulo="Figura"):
     ax.set_aspect("equal", adjustable="datalim")
     ax.set_title(titulo)
 
-    plt.show()
+    fig.savefig(arquivo_saida)
+    print(f"(figura tambem salva em: {arquivo_saida})")
+
+    try:
+        plt.show()
+    except Exception:
+        pass
+    plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
@@ -101,43 +172,54 @@ def matriz_reflexao(eixo):
     Monta a matriz de reflexao 2x2.
     eixo: 'x' -> reflexao no eixo X
           'y' -> reflexao no eixo Y
-          'origem' -> reflexao na origem
     """
     if eixo == "x":
         return np.array([[1, 0], [0, -1]])
     elif eixo == "y":
         return np.array([[-1, 0], [0, 1]])
-    elif eixo == "origem":
-        return np.array([[-1, 0], [0, -1]])
     else:
-        raise ValueError("Eixo de reflexao invalido. Use 'x', 'y' ou 'origem'.")
+        raise ValueError("Eixo de reflexao invalido. Use 'x' ou 'y'.")
 
 
-def aplicar_transformacao(matriz_transf, pontos):
-    """Aplica uma matriz de transformacao a matriz de pontos (2xN)."""
-    return matriz_transf @ pontos
+def aplicar_transformacao(matriz_transf, pontos, ancoragem):
+    """
+    Aplica uma matriz de transformacao a matriz de pontos (2xN),
+    usando 'ancoragem' (vetor coluna 2x1) como pivo:
+
+        P' = T @ (P - C) + C
+
+    O numpy faz o broadcast de (2x1) contra (2xN) automaticamente,
+    entao 'pontos - ancoragem' subtrai o pivo de TODAS as colunas
+    (todos os pontos) de uma vez.
+    """
+    pontos_centralizados = pontos - ancoragem
+    pontos_transformados = matriz_transf @ pontos_centralizados
+    return pontos_transformados + ancoragem
 
 
 def pedir_matriz_rotacao_interativo():
+    """Pergunta o angulo de rotacao e devolve a matriz 2x2 correspondente."""
     angulo = float(input("Angulo de rotacao (graus): "))
     return matriz_rotacao(angulo)
 
 
 def pedir_matriz_escala_interativo():
+    """Pergunta os fatores de escala Sx e Sy e devolve a matriz 2x2 correspondente."""
     sx = float(input("Fator de escala Sx: "))
     sy = float(input("Fator de escala Sy: "))
     return matriz_escala(sx, sy)
 
 
 def pedir_matriz_reflexao_interativo():
+    """Pergunta o eixo/reta de reflexao e devolve a matriz 2x2 correspondente."""
     while True:
-        eixo = input("Refletir em 'x', 'y' ou 'origem'? ").strip().lower()
-        if eixo in ("x", "y", "origem"):
+        eixo = input("Refletir em 'x' ou 'y'? ").strip().lower()
+        if eixo in ("x", "y"):
             return matriz_reflexao(eixo)
         print("Opcao invalida.")
 
 
-def menu_transformacao_unica(pontos):
+def menu_transformacao_unica(pontos, ancoragem):
     """Menu interativo para aplicar UMA transformacao de cada vez."""
     while True:
         print("\n--- Transformacao Unica ---")
@@ -159,8 +241,10 @@ def menu_transformacao_unica(pontos):
             print("Opcao invalida.")
             continue
 
-        novos_pontos = aplicar_transformacao(t, pontos)
-        mostrar_figura(novos_pontos, "Apos transformacao")
+        novos_pontos = aplicar_transformacao(t, pontos, ancoragem)
+        print("\nPontos apos a transformacao:")
+        print(formatar_pontos(novos_pontos))
+        mostrar_figura(novos_pontos, "Apos transformacao", ancoragem)
         return novos_pontos, t
 
 
@@ -175,8 +259,9 @@ def montar_transformacao_composta():
 
     Se as transformacoes forem T1, depois T2, depois T3, a matriz
     composta e:  C = T3 @ T2 @ T1
-    de forma que "C @ pontos" produz o mesmo resultado final que
-    aplicar T1, depois T2, depois T3 separadamente.
+    de forma que "C @ (P - ancoragem) + ancoragem" produz o mesmo
+    resultado final que aplicar T1, depois T2, depois T3 separadamente
+    (cada uma em torno do mesmo pivo).
     """
     transformacoes = []
 
@@ -189,7 +274,7 @@ def montar_transformacao_composta():
         opcao = input("Escolha uma opcao: ").strip()
 
         if opcao == "1":
-            transformacoes.append(pedir_matriz_rotacao_interativo())
+            transformacoes.append(pedir_matriz_rotacao_interativo())  # adiciona cada transformacao a lista
         elif opcao == "2":
             transformacoes.append(pedir_matriz_escala_interativo())
         elif opcao == "3":
@@ -204,32 +289,38 @@ def montar_transformacao_composta():
 
     # Multiplica as matrizes na ordem inversa da aplicacao,
     # pois a ultima transformacao adicionada deve ficar mais a esquerda.
-    composta = np.identity(2)
-    for t in transformacoes:
-        composta = t @ composta
+    composta = np.identity(2)  # matriz identidade 2x2: "elemento neutro" da multiplicacao
+    for t in transformacoes:   # percorre a lista de transformacoes, na ordem em que foram adicionadas
+        composta = t @ composta  # empilha cada nova transformacao a esquerda das anteriores
 
     return composta
 
 
-def menu_transformacao_multipla(pontos):
+def menu_transformacao_multipla(pontos, ancoragem):
     """Monta a matriz composta e aplica UMA UNICA VEZ sobre os pontos originais."""
     matriz_composta = montar_transformacao_composta()
+    matriz_composta_limpa = np.round(matriz_composta, decimals=6)
+    matriz_composta_limpa[np.isclose(matriz_composta_limpa, 0)] = 0
     print("\nMatriz de transformacao composta:")
-    print(matriz_composta)
+    print(matriz_composta_limpa)
 
-    novos_pontos = aplicar_transformacao(matriz_composta, pontos)
-    mostrar_figura(novos_pontos, "Apos transformacoes compostas")
+    novos_pontos = aplicar_transformacao(matriz_composta, pontos, ancoragem)
+    print("\nPontos apos as transformacoes compostas:")
+    print(formatar_pontos(novos_pontos))
+    mostrar_figura(novos_pontos, "Apos transformacoes compostas", ancoragem)
     return novos_pontos, matriz_composta
 
 
 # ---------------------------------------------------------------------------
 # 6. Reversao de transformacao (matriz inversa)
 # ---------------------------------------------------------------------------
-def reverter_transformacao(pontos_transformados, matriz_transformacao):
+def reverter_transformacao(pontos_transformados, matriz_transformacao, ancoragem):
     """
     Recebe a matriz de pontos ja transformada e a matriz que causou essa
-    transformacao, calcula a matriz inversa e a aplica para recuperar
-    as coordenadas originais.
+    transformacao, calcula a matriz inversa e a aplica (em torno do
+    mesmo pivo) para recuperar as coordenadas originais:
+
+        P = Tinv @ (P' - C) + C
 
     Trata o caso de matriz singular (determinante = 0), que nao possui
     inversa e, portanto, nao pode ser revertida.
@@ -242,20 +333,23 @@ def reverter_transformacao(pontos_transformados, matriz_transformacao):
         return None
 
     matriz_inversa = np.linalg.inv(matriz_transformacao)
-    pontos_originais = matriz_inversa @ pontos_transformados
+    pontos_centralizados = pontos_transformados - ancoragem
+    pontos_originais = matriz_inversa @ pontos_centralizados + ancoragem
     return pontos_originais
 
 
-def menu_reversao(pontos_atuais, ultima_transformacao):
+def menu_reversao(pontos_atuais, ultima_transformacao, ancoragem):
     if ultima_transformacao is None:
         print("Nenhuma transformacao foi aplicada ainda, nada para reverter.")
         return pontos_atuais
 
-    pontos_revertidos = reverter_transformacao(pontos_atuais, ultima_transformacao)
+    pontos_revertidos = reverter_transformacao(pontos_atuais, ultima_transformacao, ancoragem)
     if pontos_revertidos is None:
         return pontos_atuais
 
-    mostrar_figura(pontos_revertidos, "Figura revertida (original)")
+    print("\nPontos revertidos:")
+    print(formatar_pontos(pontos_revertidos))
+    mostrar_figura(pontos_revertidos, "Figura revertida (original)", ancoragem)
     return pontos_revertidos
 
 
@@ -265,6 +359,8 @@ def menu_reversao(pontos_atuais, ultima_transformacao):
 def main():
     quantidade = pedir_quantidade_pontos()
     pontos_originais = pedir_pontos(quantidade)
+    ancoragem = pedir_ponto_ancoragem()
+
     pontos_atuais = pontos_originais.copy()
     ultima_transformacao = None
 
@@ -275,22 +371,25 @@ def main():
         print("3 - Aplicar transformacoes multiplas (composicao)")
         print("4 - Reverter ultima transformacao (matriz inversa)")
         print("5 - Reiniciar com a figura original")
+        print("6 - Redefinir ponto de ancoragem")
         print("0 - Sair")
         opcao = input("Escolha uma opcao: ").strip()
 
         if opcao == "1":
-            mostrar_figura(pontos_atuais, "Figura atual")
+            mostrar_figura(pontos_atuais, "Figura atual", ancoragem)
         elif opcao == "2":
-            pontos_atuais, ultima_transformacao = menu_transformacao_unica(pontos_atuais)
+            pontos_atuais, ultima_transformacao = menu_transformacao_unica(pontos_atuais, ancoragem)
         elif opcao == "3":
-            pontos_atuais, ultima_transformacao = menu_transformacao_multipla(pontos_atuais)
+            pontos_atuais, ultima_transformacao = menu_transformacao_multipla(pontos_atuais, ancoragem)
         elif opcao == "4":
-            pontos_atuais = menu_reversao(pontos_atuais, ultima_transformacao)
+            pontos_atuais = menu_reversao(pontos_atuais, ultima_transformacao, ancoragem)
             ultima_transformacao = None
         elif opcao == "5":
             pontos_atuais = pontos_originais.copy()
             ultima_transformacao = None
             print("Figura reiniciada para o estado original.")
+        elif opcao == "6":
+            ancoragem = pedir_ponto_ancoragem()
         elif opcao == "0":
             print("Encerrando.")
             break
